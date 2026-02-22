@@ -34,7 +34,7 @@ impl CustomOp1 for RepeatKV {
         l1: &Layout,
     ) -> Result<(candle_core::CudaStorage, candle_core::Shape)> {
         use candle_core::cuda_backend::cudarc::driver::{
-            CudaSlice, DeviceRepr, LaunchAsync, LaunchConfig,
+            CudaSlice, DeviceRepr, LaunchConfig, PushKernelArg,
         };
         use candle_core::cuda_backend::{kernel_name, Map1, WrapErr};
         use candle_core::{CudaDevice, WithDType};
@@ -63,14 +63,20 @@ impl CustomOp1 for RepeatKV {
                     shared_mem_bytes: 0,
                 };
 
-                let func = dev
-                    .get_or_load_func(&kernel_name::<T>("repeat_kv"), candle_gqa_kernels::UNARY)?;
+                let func = dev.get_or_load_custom_func(
+                    &kernel_name::<T>("repeat_kv"),
+                    "kv_repeat_module",
+                    candle_gqa_kernels::UNARY,
+                )?;
                 // SAFETY: Set later by running the kernel.
-                let dst = unsafe { dev.alloc::<T>(output_el) }.w()?;
-                let params = (&src, &dst, n_local_heads, self.n_repeats, seqlen, head_dim);
+                let dst = unsafe { dev.alloc::<T>(output_el) }?;
 
+                let mut builder = func.builder();
+                builder.arg(&src);
+                builder.arg(&dst);
+                candle_core::builder_arg!(builder, n_local_heads, self.n_repeats, seqlen, head_dim);
                 // SAFETY: ffi.
-                unsafe { func.launch(cfg, params) }.w()?;
+                unsafe { builder.launch(cfg) }.w()?;
                 Ok(dst)
             }
         }

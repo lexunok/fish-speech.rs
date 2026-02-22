@@ -9,7 +9,7 @@ checkpoints
 fake.wav
 voices*
 !voices-template
-!voices-template/default.npy
+!voices-template/*
 .DS_Store
 *.pth
 .ipynb_checkpoints

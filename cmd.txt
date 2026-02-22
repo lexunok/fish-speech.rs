@@ -1,0 +1,2 @@
+CANDLE_FLASH_ATTN_BUILD_DIR=$HOME/.candle cargo build --release --features "cuda flash-attn" --bin server
+./target/release/server --voice-dir voices-template --checkpoint ./checkpoints/fish-speech-1.5/
